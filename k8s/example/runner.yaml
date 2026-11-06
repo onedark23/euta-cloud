@@ -1,0 +1,70 @@
+# Runner: claims runs from the server queue (internal Service :8081) and runs the engine + Chromium.
+# strategy Recreate: a surge pod would request another 1 CPU / 2Gi and exceed the namespace quota.
+# Pod deletion (redeploy, node drain): SIGTERM → stop claiming, let running runs finish for up to
+# terminationGracePeriodSeconds; runs still going then are killed and the server marks them aborted
+# when their lease expires (RUN_LEASE_TTL_MS, 2 min). Runs may be allowed up to hours — redeploy when idle.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: euta-runner
+  labels:
+    app.kubernetes.io/name: euta-runner
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: euta-runner
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: euta-runner
+    spec:
+      imagePullSecrets:
+        - name: registry-pull   # docker-registry Secret for your registry (README §2)
+      terminationGracePeriodSeconds: 1800
+      # The pause container becomes PID 1 and reaps orphaned browser processes (compose used init: true;
+      # the Playwright image has no tini).
+      shareProcessNamespace: true
+      # Image user `pwuser` = 1001.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+      containers:
+        - name: runner
+          image: euta-cloud-runner
+          envFrom:
+            - configMapRef:
+                name: euta-runner-config
+          env:
+            - name: EUTA_RUNNER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: euta-cloud-secrets
+                  key: RUNNER_TOKEN
+          # Limit > request: Chromium peaks, and the memory-backed /dev/shm counts against the limit.
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: work
+              mountPath: /tmp/euta-runs
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+        # Per-run temp folders (results are uploaded to the server, then removed).
+        - name: work
+          emptyDir:
+            sizeLimit: 8Gi

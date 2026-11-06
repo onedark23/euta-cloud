@@ -1,0 +1,17 @@
+node_modules/
+dist/
+runs/
+**/runs/
+.env
+.env.*
+!.env.example
+*.secrets.json
+secrets.json
+secrets.env
+*.secret
+coverage/
+.DS_Store
+*.log
+!examples/**
+examples/baselines/
+e2e-results/

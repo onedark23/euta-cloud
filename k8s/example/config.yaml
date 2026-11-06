@@ -1,0 +1,40 @@
+# Non-secret settings. Secrets (BETTER_AUTH_SECRET · CREDENTIALS_KEY · RUNNER_TOKEN · POSTGRES_PASSWORD ·
+# DATABASE_URL) live in the Secret `euta-cloud-secrets`, created by create-secrets.sh — never in Git.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: euta-server-config
+data:
+  BASE_URL: https://euta.example.com
+  ALLOWED_EMAIL_DOMAINS: example.com
+  ADMIN_EMAILS: admin@example.com
+  # SMTP_URL is intentionally absent → admin-approval sign-up mode (ADMIN_EMAILS approve sign-ups).
+  # Optional company Microsoft login (Entra ID, single tenant). Not secrets. The client secret is
+  # MICROSOFT_CLIENT_SECRET in the Secret — run `create-secrets.sh --microsoft` BEFORE setting these: the
+  # server refuses to start with only some of the three values. On → the login page's main button, first
+  # login = active account, new email sign-ups closed.
+  # MICROSOFT_TENANT_ID: <your tenant id (GUID)>
+  # MICROSOFT_CLIENT_ID: <application (client) id>
+  PORT: "8080"
+  INTERNAL_PORT: "8081"
+  RESULTS_DIR: /data/results
+  # Result files on the 14Gi PVC: 30 days, total cap 10Gi (oldest first). Headroom: ext4 reserves ~5%
+  # for root (the server runs as uid 1000), one max-size upload in flight (RESULT_MAX_RUN), and visual
+  # baselines, which share the PVC but are outside the cap.
+  RESULT_RETENTION_DAYS: "30"
+  RESULT_MAX_TOTAL: 10Gi
+  RESULT_MAX_RUN: 2Gi
+  FEED_RETENTION_DAYS: "7"
+  LOG_LEVEL: info
+  # Never set ALLOW_PRIVATE_TARGETS in a deployment (dev/test only).
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: euta-runner-config
+data:
+  # Server internal API (port 8081) through the in-cluster Service — never via the ingress.
+  EUTA_SERVER_URL: http://euta-server:8081
+  RUNNER_LOCATION: cluster
+  # 2 concurrent runs (default 4) — fits the 2Gi memory request.
+  RUNNER_CONCURRENCY: "2"

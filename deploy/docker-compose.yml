@@ -1,0 +1,51 @@
+# Local dev/test stack: PostgreSQL 17 + Mailpit (fake SMTP, web UI on :8025).
+# Host ports are non-default so they don't clash with other local databases.
+# The runner service is opt-in (profile "runner"): stage the image context first —
+#   packages/runner/scripts/stage-image.sh
+#   RUNNER_TOKEN=… docker compose -f deploy/docker-compose.yml --profile runner up --build runner
+# It talks to a server running on the host (internal API port 8081).
+name: euta-cloud
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: euta
+      POSTGRES_PASSWORD: euta-dev-only
+      POSTGRES_DB: euta
+    ports:
+      - "55432:5432"
+    volumes:
+      - euta-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U euta -d euta"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "51025:1025"
+      - "58025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  runner:
+    profiles: ["runner"]
+    build:
+      context: ../packages/runner/.docker
+      dockerfile: ../Dockerfile
+    image: euta-runner:dev
+    init: true
+    shm_size: 1gb
+    stop_grace_period: 2m
+    environment:
+      EUTA_SERVER_URL: ${EUTA_SERVER_URL:-http://host.docker.internal:8081}
+      EUTA_RUNNER_TOKEN: ${RUNNER_TOKEN:-}  # same value as the server; the runner refuses to start without it
+      RUNNER_LOCATION: ${RUNNER_LOCATION:-docker-local}
+      RUNNER_CONCURRENCY: ${RUNNER_CONCURRENCY:-2}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+volumes:
+  euta-db:

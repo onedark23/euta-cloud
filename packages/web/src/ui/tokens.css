@@ -1,0 +1,124 @@
+/* euta design tokens — a copy of SPEC_UI-디자인-시스템 (euta-workspace/40.설계). The SPEC is canonical:
+   change a value there first, then here. This is the only file in src/ that may contain color values. */
+
+:root {
+  color-scheme: light;
+
+  --bg: #f3f4f8;
+  --surface: #ffffff;
+  --surface-2: #f6f7fa;
+  --border: #e4e7ee;
+  --text: #1a2030;
+  --muted: #646d80;
+  --accent: #2a3a66;
+  --accent-hover: #22305a;
+  --accent-fg: #ffffff;
+  --accent-soft: #eaeef8;
+  --point: #f37b2f;
+  --focus: #3061d4;
+  --ok: #1b8150;
+  --ok-soft: #e3f4ea;
+  --bad: #c4372c;
+  --bad-soft: #fde8e5;
+  --warn: #986300;
+  --warn-soft: #fcf1d8;
+  --run: #3061d4;
+  --run-soft: #e6eefc;
+  --manual: #6941c6;
+  --manual-soft: #f1ecfb;
+  --overlay: rgba(16, 20, 32, 0.45);
+
+  --shadow-1: 0 1px 2px rgba(20, 30, 60, 0.06), 0 4px 14px rgba(20, 30, 60, 0.06);
+  --shadow-2: 0 8px 30px rgba(20, 30, 60, 0.16);
+
+  --font: 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 19px;
+  --fs-2xl: 23px;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+
+  --r-sm: 6px;
+  --r-md: 9px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+
+  --h-md: 36px;
+  --h-sm: 30px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --bg: #10131b;
+    --surface: #191d28;
+    --surface-2: #1f2431;
+    --border: #2a3141;
+    --text: #e7eaf0;
+    --muted: #9aa3b4;
+    --accent: #9db1ec;
+    --accent-hover: #b3c3f1;
+    --accent-fg: #10131b;
+    --accent-soft: #222d4a;
+    --point: #ff9d5c;
+    --focus: #82a9ff;
+    --ok: #52c690;
+    --ok-soft: #15301f;
+    --bad: #f27e73;
+    --bad-soft: #3a1b19;
+    --warn: #e2b250;
+    --warn-soft: #342a10;
+    --run: #82a9ff;
+    --run-soft: #1c2a4c;
+    --manual: #b69cf5;
+    --manual-soft: #2b2343;
+    --overlay: rgba(0, 0, 0, 0.6);
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
+    --shadow-2: 0 8px 30px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #10131b;
+  --surface: #191d28;
+  --surface-2: #1f2431;
+  --border: #2a3141;
+  --text: #e7eaf0;
+  --muted: #9aa3b4;
+  --accent: #9db1ec;
+  --accent-hover: #b3c3f1;
+  --accent-fg: #10131b;
+  --accent-soft: #222d4a;
+  --point: #ff9d5c;
+  --focus: #82a9ff;
+  --ok: #52c690;
+  --ok-soft: #15301f;
+  --bad: #f27e73;
+  --bad-soft: #3a1b19;
+  --warn: #e2b250;
+  --warn-soft: #342a10;
+  --run: #82a9ff;
+  --run-soft: #1c2a4c;
+  --manual: #b69cf5;
+  --manual-soft: #2b2343;
+  --overlay: rgba(0, 0, 0, 0.6);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
+  --shadow-2: 0 8px 30px rgba(0, 0, 0, 0.5);
+}

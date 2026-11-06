@@ -1,0 +1,170 @@
+# Server: public API + web + SSE + remote MCP on 8080 (ingress), internal runner API on 8081 (Service only).
+# Result files on a 14Gi RWO PVC → one replica, strategy Recreate.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: euta-server-data
+  labels:
+    app.kubernetes.io/name: euta-server
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 14Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: euta-server
+  labels:
+    app.kubernetes.io/name: euta-server
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: euta-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: euta-server
+    spec:
+      imagePullSecrets:
+        - name: registry-pull   # docker-registry Secret for your registry (README §2)
+      # Image user `node` = 1000 (numeric here so runAsNonRoot can be verified); fsGroup makes the
+      # root-owned volume writable.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: server
+          image: euta-cloud-server
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: internal
+              containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: euta-server-config
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: euta-cloud-secrets
+                  key: DATABASE_URL
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: euta-cloud-secrets
+                  key: BETTER_AUTH_SECRET
+            - name: CREDENTIALS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: euta-cloud-secrets
+                  key: CREDENTIALS_KEY
+            - name: RUNNER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: euta-cloud-secrets
+                  key: RUNNER_TOKEN
+            # Microsoft login (Entra ID) — optional: absent until create-secrets.sh --microsoft.
+            - name: MICROSOFT_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: euta-cloud-secrets
+                  key: MICROSOFT_CLIENT_SECRET
+                  optional: true
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          # Migrations run before listening → startupProbe holds the other probes (up to 5 min).
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            # Mount at /data (not /data/results) so the volume's lost+found stays out of the results root.
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: euta-server-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: euta-server
+  labels:
+    app.kubernetes.io/name: euta-server
+spec:
+  selector:
+    app.kubernetes.io/name: euta-server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+    # Runners only (in-cluster). Not referenced by the Ingress.
+    - name: internal
+      port: 8081
+      targetPort: internal
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: euta-server
+  labels:
+    app.kubernetes.io/name: euta-server
+  annotations:
+    # SSE (change feed, run progress): no response buffering, long-lived connections.
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # Public API body limit is 1MB; result uploads go runner → internal Service, not through here.
+    nginx.ingress.kubernetes.io/proxy-body-size: 2m
+    # Optional: limit who can reach it (e.g. office public IPs). TEST-NET example values.
+    # nginx.ingress.kubernetes.io/whitelist-source-range: 203.0.113.10/32,203.0.113.11/32
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - euta.example.com
+      secretName: euta-tls
+  rules:
+    - host: euta.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: euta-server
+                port:
+                  name: http

@@ -1,0 +1,30 @@
+{
+  "name": "@euta-cloud/runner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "euta cloud runner — claims runs from the server queue and runs the engine CLI as a child process",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@euta-cloud/shared": "workspace:*",
+    "tar-stream": "^3.2.2"
+  },
+  "devDependencies": {
+    "fflate": "^0.8.3"
+  }
+}

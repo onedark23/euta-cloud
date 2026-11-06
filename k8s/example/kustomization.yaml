@@ -1,0 +1,25 @@
+# euta cloud — example deployment (one namespace). Copy this folder to your own deploy repo, replace the
+# example values (namespace · images · host · e-mail domain), then: kubectl apply -k <folder> (or point ArgoCD at it).
+# No Secret objects here: the app Secret `euta-cloud-secrets` is created once with ./create-secrets.sh.
+# No cluster-scoped resources, no ResourceQuota/LimitRange. This set requests CPU 1.4 · memory 2944Mi ·
+# storage 19Gi · pods 3.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: euta
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: euta-cloud
+resources:
+  - config.yaml
+  - postgres.yaml
+  - server.yaml
+  - runner.yaml
+# Images: build from this repo (README §2) and push to your registry.
+# Replace <TAG> with the pushed tag (git short SHA) before applying — see README §2.
+images:
+  - name: euta-cloud-server
+    newName: registry.example.com/euta/euta-cloud-server
+    newTag: "<TAG>"
+  - name: euta-cloud-runner
+    newName: registry.example.com/euta/euta-cloud-runner
+    newTag: "<TAG>"
