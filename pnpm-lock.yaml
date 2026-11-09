@@ -48,6 +48,9 @@ importers:
       '@euta/core':
         specifier: link:../../../euta-engine/packages/core
         version: link:../../../euta-engine/packages/core
+      '@fastify/send':
+        specifier: ^4
+        version: 4.1.2
       '@fastify/static':
         specifier: ^10.1.6
         version: 10.1.6
@@ -72,6 +75,9 @@ importers:
       pg:
         specifier: ^8.23.1
         version: 8.23.1
+      semver:
+        specifier: ^7
+        version: 7.8.5
       tar-stream:
         specifier: ^3
         version: 3.2.2
@@ -85,6 +91,9 @@ importers:
       '@types/pg':
         specifier: ^8.23.1
         version: 8.23.1
+      '@types/semver':
+        specifier: ^7
+        version: 7.8.0
       '@types/tar-stream':
         specifier: ^3.1.5
         version: 3.1.5
@@ -1117,6 +1126,9 @@ packages:
 
   '@types/react@19.3.0':
     resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
+
+  '@types/semver@7.8.0':
+    resolution: {integrity: sha512-1mAINjtQCXXeLkJ9ehXkwOcBpqtLxiVtKhpUf83DdRNdQKV0iXZpaHYqRr7nj+wvxuJzoAmAwXI+sCNMv1CzLQ==}
 
   '@types/tar-stream@3.1.5':
     resolution: {integrity: sha512-zCUA6CSDw0t2cpQiZixpyzfubpeuVZmBr5wztvuCG4bhy7reX/9wGXdZxEzz2CjMFLQ32UPR/01jzUUSRJeCeQ==}
@@ -2864,6 +2876,8 @@ snapshots:
   '@types/react@19.3.0':
     dependencies:
       csstype: 3.2.3
+
+  '@types/semver@7.8.0': {}
 
   '@types/tar-stream@3.1.5':
     dependencies:

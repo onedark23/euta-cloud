@@ -22,6 +22,7 @@
     "@better-auth/drizzle-adapter": "1.6.33",
     "@euta-cloud/shared": "workspace:*",
     "@euta/core": "link:../../../euta-engine/packages/core",
+    "@fastify/send": "^4",
     "@fastify/static": "^10.1.6",
     "@modelcontextprotocol/server": "2.1.0",
     "better-auth": "1.6.33",
@@ -30,12 +31,14 @@
     "fastify": "^5.12.7",
     "nodemailer": "^10.1.7",
     "pg": "^8.23.1",
+    "semver": "^7",
     "tar-stream": "^3",
     "zod": "^4.6"
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "2.1.0",
     "@types/pg": "^8.23.1",
+    "@types/semver": "^7",
     "@types/tar-stream": "^3.1.5",
     "drizzle-kit": "^0.31.11"
   }

@@ -1,0 +1,12 @@
+/* 앱 내려받기 screen (pages/download.tsx). */
+.dl-page { gap: var(--sp-4); }
+.dl-page h2 { margin-top: 0; }
+.dl-hero-buttons { display: flex; flex-wrap: wrap; gap: var(--sp-4); margin: var(--sp-3) 0; }
+.dl-hero-item { display: flex; flex-direction: column; gap: var(--sp-1); }
+.btn.dl-big { height: 52px; padding: 0 var(--sp-6); font-size: var(--fs-lg); font-weight: 600; border-width: 1px; }
+.mono-name { font-family: var(--font-mono); font-size: var(--fs-xs); }
+.dl-others { gap: var(--sp-2); }
+.dl-switch { margin: var(--sp-3) 0 0; }
+.dl-steps { margin: var(--sp-2) 0 0; padding-left: var(--sp-5); line-height: 1.7; }
+.dl-steps li { margin: var(--sp-1) 0; }
+.dl-notes { max-width: 36rem; font-size: var(--fs-sm); }

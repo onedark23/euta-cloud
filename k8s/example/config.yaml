@@ -25,6 +25,13 @@ data:
   RESULT_MAX_TOTAL: 10Gi
   RESULT_MAX_RUN: 2Gi
   FEED_RETENTION_DAYS: "7"
+  # App update files (SPEC 앱-배포-업데이트): <UPDATES_DIR>/<channel>/<version>/…, newest 3 published per
+  # channel (≈ 1.5GB per version), counted separately from RESULT_MAX_TOTAL. Apps connected to this server
+  # update from it once a release is published; otherwise they use GitHub Releases (ADR-047).
+  UPDATES_DIR: /data/updates
+  # Oldest app version allowed for cloud features (426 APP_TOO_OLD below it). Empty = no check. Raise it
+  # in the same deployment that changes the API in a way older apps cannot handle.
+  MIN_APP_VERSION: ""
   LOG_LEVEL: info
   # Never set ALLOW_PRIVATE_TARGETS in a deployment (dev/test only).
 ---

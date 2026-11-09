@@ -12,6 +12,11 @@ export interface ServerConfigDto {
   allowedEmailDomains: string[];
   /** Company Microsoft (Entra ID) login is on → the main way in; new email sign-ups are closed. */
   microsoftLogin: boolean;
+  /**
+   * This server distributes app updates (at least one published release) → apps connected to it update from
+   * `/updates/<channel>/`, others from GitHub Releases (SPEC 앱-배포-업데이트 "업데이트 원본", ADR-047).
+   */
+  appUpdates: boolean;
 }
 
 export interface MeDto {

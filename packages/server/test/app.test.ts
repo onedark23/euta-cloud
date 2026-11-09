@@ -49,11 +49,11 @@ describe('app shell', () => {
   it('public server config tells the web which sign-up mode is on', async () => {
     const approval = await TestEnv.create({ approvalMode: true });
     try {
-      expect((await approval.req('GET', '/api/config')).body).toEqual({ signUpMode: 'approval', allowedEmailDomains: ['example.com'], microsoftLogin: false });
+      expect((await approval.req('GET', '/api/config')).body).toEqual({ signUpMode: 'approval', allowedEmailDomains: ['example.com'], microsoftLogin: false, appUpdates: false });
     } finally {
       await approval.close();
     }
-    expect((await env.req('GET', '/api/config')).body).toEqual({ signUpMode: 'email', allowedEmailDomains: ['example.com'], microsoftLogin: false });
+    expect((await env.req('GET', '/api/config')).body).toEqual({ signUpMode: 'email', allowedEmailDomains: ['example.com'], microsoftLogin: false, appUpdates: false });
   });
 
   it('health check', async () => {

@@ -572,6 +572,45 @@ export const accessRequests = pgTable(
   ],
 );
 
+/**
+ * App releases (stage 17 앱 배포 · 업데이트): one row per app version. Files live on the server volume
+ * at `<UPDATES_DIR>/<channel>/<version>/<name>`; `/updates/<channel>/<name>` serves the newest
+ * published release that has that file, so publishing (status + published_at, one UPDATE) switches
+ * every `latest*.yml` at once. Only the newest 3 published per channel are kept.
+ */
+export const appReleases = pgTable(
+  'app_releases',
+  {
+    id: id(),
+    /** SemVer, unique across channels (the channel is derived from it). */
+    version: text('version').notNull(),
+    /** prerelease name (`alpha` · `beta`) or `stable`. */
+    channel: text('channel').notNull(),
+    notes: text('notes').notNull().default(''),
+    /** draft · published */
+    status: text('status').notNull().default('draft'),
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: ts('created_at').notNull().defaultNow(),
+    publishedAt: ts('published_at'),
+  },
+  (t) => [uniqueIndex('app_releases_version_uq').on(t.version), index('app_releases_channel_idx').on(t.channel, t.status, t.publishedAt)],
+);
+
+export const appReleaseFiles = pgTable(
+  'app_release_files',
+  {
+    releaseId: text('release_id')
+      .notNull()
+      .references(() => appReleases.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    size: bigint('size', { mode: 'number' }).notNull(),
+    /** base64 SHA-512 (same encoding as electron-builder's latest*.yml). */
+    sha512: text('sha512').notNull(),
+    uploadedAt: ts('uploaded_at').notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.releaseId, t.name] })],
+);
+
 /** Better Auth Drizzle adapter schema map (model name → table). */
 export const authSchema = {
   user: users,

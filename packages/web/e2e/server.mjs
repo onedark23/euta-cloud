@@ -65,6 +65,7 @@ Object.assign(env, {
   AUTH_RATE_LIMIT: 'false',
   WEB_DIST: webDist,
   RESULTS_DIR: mkdtempSync(join(tmpdir(), 'euta-e2e-results-')),
+  UPDATES_DIR: mkdtempSync(join(tmpdir(), 'euta-e2e-updates-')),
   LOG_LEVEL: 'warn',
   RUNNER_TOKEN,
   RUNNER_HEARTBEAT_MS: '1000',

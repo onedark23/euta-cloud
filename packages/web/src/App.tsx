@@ -4,10 +4,11 @@
 import { AdminPage } from './pages/admin';
 import { LoginPage, PendingPage, SignupPage } from './pages/auth';
 import { DevicePage } from './pages/device';
+import { DownloadPage } from './pages/download';
 import { ProjectsPage } from './pages/projects';
 import { TokensPage } from './pages/tokens';
 import { ProjectShell } from './project/shell';
-import { FolderKanban, KeyRound, LogOut, ShieldCheck } from 'lucide-react';
+import { Download, FolderKanban, KeyRound, LogOut, ShieldCheck } from 'lucide-react';
 import { Link, matchPath, useLocation } from './router';
 import { RequireLogin, useServerConfig, useSession } from './session';
 import { Button, Card, ThemeSelect } from './ui';
@@ -30,6 +31,10 @@ function Header() {
           <Link href="/settings/tokens">
             <KeyRound size={16} aria-hidden="true" />
             토큰
+          </Link>
+          <Link href="/download">
+            <Download size={16} aria-hidden="true" />
+            앱 내려받기
           </Link>
           {me.isAdmin && (
             <Link href="/admin">
@@ -82,6 +87,8 @@ function Routes() {
       return <PendingPage />;
     case '/device':
       return <RequireLogin>{() => <DevicePage />}</RequireLogin>;
+    case '/download':
+      return <RequireLogin>{() => <DownloadPage />}</RequireLogin>;
     case '/settings/tokens':
       return <RequireLogin>{() => <TokensPage />}</RequireLogin>;
     case '/admin':

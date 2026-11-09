@@ -7,7 +7,7 @@ const AUTHORIZE = 'https://login.microsoftonline.com/tenant/oauth2/v2.0/authoriz
 
 async function microsoftOn(page: Page) {
   await page.route('**/api/config', (route) =>
-    route.fulfill({ json: { signUpMode: 'approval', allowedEmailDomains: ['example.com'], microsoftLogin: true } }),
+    route.fulfill({ json: { signUpMode: 'approval', allowedEmailDomains: ['example.com'], microsoftLogin: true, appUpdates: false } }),
   );
 }
 

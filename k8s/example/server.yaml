@@ -168,3 +168,38 @@ spec:
                 name: euta-server
                 port:
                   name: http
+---
+# App release upload (optional — only if this server distributes app updates): `pnpm release:upload` in
+# euta-app PUTs installers/update files of up to 1 GiB each to /api/admin/app-releases/… — only this path
+# gets the large body, streamed (no request buffering) with long timeouts. Same host, TLS and allowlist as
+# `euta-server` (keep whitelist-source-range identical). nginx picks the longest matching path, so the 2m
+# limit of the main Ingress still applies everywhere else.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: euta-server-release-upload
+  labels:
+    app.kubernetes.io/name: euta-server
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 1g
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # nginx.ingress.kubernetes.io/whitelist-source-range: 203.0.113.10/32,203.0.113.11/32
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - euta.example.com
+      secretName: euta-tls
+  rules:
+    - host: euta.example.com
+      http:
+        paths:
+          - path: /api/admin/app-releases
+            pathType: Prefix
+            backend:
+              service:
+                name: euta-server
+                port:
+                  name: http

@@ -12,7 +12,7 @@
 | `kustomization.yaml` | 네임스페이스 · 공통 라벨 · **이미지 주소**(`registry.example.com/euta/…`, 태그는 `<TAG>` 자리표시) |
 | `config.yaml` | ConfigMap 2개 — 서버(`BASE_URL` · 가입 도메인 · 관리자 · 결과 보관) · 러너(서버 내부 주소 · 실행 위치 · 동시 실행 2) |
 | `postgres.yaml` | PostgreSQL 17 StatefulSet + PVC 5Gi + Service `euta-db` |
-| `server.yaml` | 서버 Deployment(1개, Recreate) + PVC 14Gi(결과 파일) + Service(8080 공개 · 8081 러너 전용) + Ingress |
+| `server.yaml` | 서버 Deployment(1개, Recreate) + PVC 14Gi(결과 파일 · 앱 업데이트 파일) + Service(8080 공개 · 8081 러너 전용) + Ingress 2개(전체 · 앱 릴리스 올리기 1g, §11) |
 | `runner.yaml` | 러너 Deployment(1개, Recreate, 동시 실행 2) |
 | `create-secrets.sh` | 앱 Secret `euta-cloud-secrets` 를 1회 생성 (Git 에 비밀 없음) |
 
@@ -171,3 +171,28 @@ kubectl -n euta exec statefulset/euta-db -- pg_dump -U euta -d euta -Fc > euta-$
 
 - `kubectl delete -k k8s/example` 는 **서버 결과 PVC(`euta-server-data`)까지 지운다**. DB PVC(`data-euta-db-0`, StatefulSet 이 만든 것)는 남는다 — DB 까지 지우려면 따로 `kubectl -n euta delete pvc data-euta-db-0`.
 - Secret `euta-cloud-secrets` 는 남는다. DB PVC 를 지우지 않은 채 Secret 을 지우고 새로 만들면 DB 비밀번호가 맞지 않게 되므로 함께 처리한다.
+
+## 11. 앱 업데이트 배포 (선택)
+
+설계: `../euta-workspace/40.설계/SPEC_앱-배포-업데이트.md` · ADR-047. 이 서버가 앱 설치 · 업데이트 파일을 내려주게 할 수 있다(조직용 미러). **게시한 릴리스가 하나라도 있으면** 이 서버에 연결한 앱은 여기서 업데이트를 받고(`GET /api/config` `appUpdates: true`), 없으면 GitHub Releases(`onedark23/euta-app`)에서 받는다.
+
+- 파일은 서버 PVC 의 `UPDATES_DIR`(`/data/updates/<채널>/<버전>/`)에 두고 서버가 직접 내려준다. 공개 경로(로그인 없음): `/updates/<채널>/latest*.yml` · 파일(electron-updater generic 형식) · `/api/app/releases?channel=` · `/api/app/compat`. 웹 머리 메뉴 **앱 내려받기** 가 같은 목록을 보여 준다.
+- 올리기는 **관리자 계정의 읽기·쓰기 개인 토큰**으로, 앱 레포(`euta-app`)에서:
+
+```sh
+# 웹 › 토큰 에서 관리자 계정으로 "읽기·쓰기" 토큰 발급 → 환경 변수로만 넘긴다(파일·커밋에 남기지 않음)
+EUTA_ADMIN_TOKEN=… pnpm release:upload --server https://euta.example.com --publish
+```
+
+- 흐름: `POST /api/admin/app-releases`(초안) → 파일마다 `PUT …/<버전>/files/<이름>`(1개 최대 1GiB, 스트리밍) → `POST …/<버전>/publish`. 게시하는 순간 그 채널의 `latest*.yml` 이 새 버전으로 바뀌고, **채널별 게시본 최근 3개만** 남긴다. 같은 버전 다시 올리기는 거절.
+- Ingress: 큰 본문은 `euta-server-release-upload`(경로 `/api/admin/app-releases` 만, `proxy-body-size: 1g` · 요청 버퍼링 끔)로만 들어온다. 접속 허용 목록을 쓰면 **두 Ingress 에 똑같이** 둔다.
+- 확인:
+
+```sh
+curl -s https://euta.example.com/api/config                      # "appUpdates": true (게시 후)
+curl -sI https://euta.example.com/updates/alpha/latest-mac.yml   # 200 · cache-control: no-store
+kubectl -n euta exec deploy/euta-server -- du -sh /data/updates /data/results
+```
+
+- 용량: 한 버전 ≈ 1.5GB × 3 = 약 4.5GB 가 결과 파일 상한(`RESULT_MAX_TOTAL`)과 **따로** PVC 를 쓴다.
+- 최소 앱 버전: 서버 API 가 옛 앱과 맞지 않게 바뀌는 배포는 **같은 배포에서** `config.yaml` 의 `MIN_APP_VERSION` 을 올린다(빈 값 = 검사 안 함). 그보다 낮은 앱은 클라우드 기능이 "업데이트 필요" 로 잠긴다.

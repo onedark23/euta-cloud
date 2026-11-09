@@ -2,6 +2,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import semver from 'semver';
 
 export interface Config {
   databaseUrl: string;
@@ -49,6 +50,10 @@ export interface Config {
   leaseTtlMs: number;
   /** How often the runner should call `events` even with nothing to send (lease renewal + stop signal). */
   runnerHeartbeatMs: number;
+  /** App update files (stage 17): `<root>/<channel>/<version>/<file>`. Separate from the result cap. */
+  updatesDir: string;
+  /** Oldest app version allowed on device-token requests (426 APP_TOO_OLD below it). null → no check. */
+  minAppVersion: string | null;
 }
 
 export interface MicrosoftConfig {
@@ -95,6 +100,15 @@ export function parseCredentialsKey(v: string): Buffer {
   return key;
 }
 
+/** MIN_APP_VERSION: empty → null; otherwise a SemVer (prerelease allowed). */
+export function parseMinAppVersion(v: string | undefined): string | null {
+  const t = v?.trim();
+  if (!t) return null;
+  const valid = semver.valid(t);
+  if (!valid) throw new Error(`MIN_APP_VERSION must be a SemVer version (e.g. 0.1.0-alpha.2): ${t}`);
+  return valid;
+}
+
 const DEFAULT_WEB_DIST = fileURLToPath(new URL('../../web/dist', import.meta.url));
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -135,5 +149,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     resultMaxRunBytes: parseBytes(env.RESULT_MAX_RUN ?? '2Gi'),
     leaseTtlMs: Number(env.RUN_LEASE_TTL_MS ?? 120_000),
     runnerHeartbeatMs: Number(env.RUNNER_HEARTBEAT_MS ?? 5_000),
+    updatesDir: resolve(env.UPDATES_DIR ?? 'data/updates'),
+    minAppVersion: parseMinAppVersion(env.MIN_APP_VERSION),
   };
 }

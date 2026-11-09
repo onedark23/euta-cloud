@@ -117,6 +117,8 @@ export function testConfig(databaseUrl: string, over: Partial<Config> = {}): Con
     resultMaxRunBytes: 64 * 1024 * 1024,
     leaseTtlMs: 120_000,
     runnerHeartbeatMs: 5_000,
+    updatesDir: mkdtempSync(join(tmpdir(), 'euta-updates-')),
+    minAppVersion: null,
     ...over,
   };
 }

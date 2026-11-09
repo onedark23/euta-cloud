@@ -33,6 +33,9 @@ import { internalRoutes } from './routes/internal.js';
 import { mcpRoutes } from './mcp/endpoint.js';
 import { runRoutes } from './routes/runs.js';
 import { scheduleRoutes } from './routes/schedules.js';
+import { appReleaseAdminRoutes, appReleasePublicRoutes } from './routes/app-releases.js';
+import { hasPublishedRelease } from './services/app-releases.js';
+import { rejectOldApp } from './services/app-version.js';
 import type { FetchLike } from './services/notify.js';
 import { inArray } from 'drizzle-orm';
 
@@ -149,14 +152,16 @@ export async function buildApp(
 
   // ── euta API
   await app.register(async (api) => {
-    api.addHook('onRequest', async (req) => {
+    api.addHook('onRequest', async (req, reply) => {
       req.principal = await authenticate(ctx, req);
+      if (rejectOldApp(ctx, req, reply)) return reply;
     });
     // Public: what the sign-up / login pages need to know (no auth).
     api.get('/api/config', async (): Promise<ServerConfigDto> => ({
       signUpMode: ctx.approvalMode ? 'approval' : 'email',
       allowedEmailDomains: config.allowedEmailDomains,
       microsoftLogin: config.microsoft !== null,
+      appUpdates: await hasPublishedRelease(ctx),
     }));
     await meRoutes(api, ctx);
     await userRoutes(api, ctx);
@@ -171,7 +176,11 @@ export async function buildApp(
     await meEventRoutes(api, ctx);
     await runRoutes(api, ctx);
     await scheduleRoutes(api, ctx);
+    await appReleaseAdminRoutes(api, ctx);
   });
+
+  // ── App updates (stage 17): public, no authentication (the app checks before sign-in).
+  await app.register(async (pub) => appReleasePublicRoutes(pub, ctx));
 
   // ── Remote MCP (/mcp, personal tokens only)
   await mcpRoutes(app, ctx);
@@ -197,7 +206,7 @@ export async function buildApp(
   const hasIndex = webDist !== null && existsSync(join(webDist, 'index.html'));
   if (webDist) await app.register(fastifyStatic, { root: webDist, wildcard: false, index: ['index.html'] });
   app.setNotFoundHandler(async (req, reply) => {
-    if (req.url.startsWith('/api/') || req.url === '/api' || req.method !== 'GET') {
+    if (req.url.startsWith('/api/') || req.url === '/api' || req.url.startsWith('/updates/') || req.method !== 'GET') {
       return reply.status(404).send(errorBody('NOT_FOUND', 'route not found'));
     }
     if (hasIndex) return reply.type('text/html').sendFile('index.html');
