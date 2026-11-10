@@ -78,7 +78,8 @@ export async function findRelease(ctx: AppContext, version: string): Promise<Rel
 
 const notDraft = (r: ReleaseRow) => new AppError(409, 'NOT_DRAFT', `release ${r.version} is already published`);
 
-export async function createRelease(ctx: AppContext, userId: string, version: string, notes: string): Promise<ReleaseRow> {
+/** `userId` null → created by the server itself (GitHub mirror, ADR-048). */
+export async function createRelease(ctx: AppContext, userId: string | null, version: string, notes: string): Promise<ReleaseRow> {
   const [existing] = await ctx.db.select({ id: appReleases.id }).from(appReleases).where(eq(appReleases.version, version));
   if (existing) throw new AppError(409, 'VERSION_EXISTS', `version ${version} already exists — bump the version`);
   try {

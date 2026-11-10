@@ -6,6 +6,7 @@ import type { Config } from './config.js';
 import type { Db } from './db/index.js';
 import type { Mailer } from './mail.js';
 import type { HostResolver } from './services/address-check.js';
+import type { AppMirror } from './services/app-mirror.js';
 import type { ChangeFeed } from './services/feed.js';
 import type { FetchLike } from './services/notify.js';
 import type { ResultStore } from './services/result-store.js';
@@ -26,4 +27,6 @@ export interface AppContext {
   log: FastifyBaseLogger;
   /** Outbound HTTP for Teams webhooks (tests inject a fake). */
   fetch: FetchLike;
+  /** GitHub release mirror (ADR-048); null → APP_MIRROR_GITHUB unset. Timers are started by main.ts. */
+  mirror: AppMirror | null;
 }

@@ -12,4 +12,9 @@ export const E2E = {
   fixturePort: port + 2,
   fixtureUrl: `http://127.0.0.1:${port + 2}`,
   runnerLocation: 'e2e-lab',
+  /** Fake GitHub for the release mirror (APP_MIRROR_BASE_URL); serves a release once armed (POST /__e2e/arm). */
+  githubPort: port + 3,
+  githubUrl: `http://127.0.0.1:${port + 3}`,
+  mirrorRepo: 'example/euta-app',
+  mirrorVersion: '0.2.0-beta.1',
 };

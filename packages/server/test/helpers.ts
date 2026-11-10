@@ -119,6 +119,7 @@ export function testConfig(databaseUrl: string, over: Partial<Config> = {}): Con
     runnerHeartbeatMs: 5_000,
     updatesDir: mkdtempSync(join(tmpdir(), 'euta-updates-')),
     minAppVersion: null,
+    appMirror: null,
     ...over,
   };
 }

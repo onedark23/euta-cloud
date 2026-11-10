@@ -1,11 +1,13 @@
 // 앱 내려받기 (SPEC_앱-배포-업데이트 "업데이트 배포"): the installer for the visitor's OS first (big
 // button), other platforms, release notes, the kept versions (newest 3) and first-install warnings per
 // platform. Administrators also see every release incl. drafts with publish / delete (upload is the
-// app repo's `pnpm release:upload`).
-import type { AdminAppReleaseDto, AppPlatform, AppReleaseDto, AppReleaseFileDto, AppReleasesDto } from '@euta-cloud/shared';
-import { Download, Laptop, Send, Trash } from 'lucide-react';
+// app repo's `pnpm release:upload`) and, when the server mirrors GitHub releases (ADR-048), the last
+// import with [지금 가져오기].
+import type { AdminAppReleaseDto, AdminAppReleasesDto, AppMirrorStatusDto, AppPlatform, AppReleaseDto, AppReleaseFileDto, AppReleasesDto } from '@euta-cloud/shared';
+import { Download, Laptop, RefreshCw, Send, Trash } from 'lucide-react';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api, errorText } from '../api';
+import { fmtTime } from '../format';
 import { useSession } from '../session';
 import { Badge, Button, buttonClass, Card, EmptyState, PageHeader, Tooltip } from '../ui';
 import { detectVisitorOs, installerLabel, PLATFORM_LABEL, type VisitorOs } from './download-os';
@@ -107,13 +109,57 @@ function InstallHelp({ initial }: { initial: AppPlatform }) {
   );
 }
 
+function mirrorResultText(run: NonNullable<AppMirrorStatusDto['lastRun']>): string {
+  switch (run.result) {
+    case 'published':
+      return `${run.version} 가져와 게시함`;
+    case 'already':
+      return `새 버전 없음 (GitHub 최신 ${run.version})`;
+    case 'none':
+      return 'GitHub 에 게시된 릴리스 없음';
+    default:
+      return `실패: ${run.message ?? '알 수 없는 오류'}`;
+  }
+}
+
+/** GitHub release mirror (ADR-048): last import and [지금 가져오기]. */
+function MirrorStatus({ mirror, busy, onSync }: { mirror: AppMirrorStatusDto; busy: boolean; onSync: () => void }) {
+  const run = mirror.lastRun;
+  const running = busy || mirror.running;
+  return (
+    <div className="row dl-mirror" data-testid="mirror-status">
+      <span>
+        GitHub 에서 가져오기: <strong>{mirror.repo}</strong>
+        {' · '}
+        {running ? (
+          '가져오는 중…'
+        ) : run ? (
+          <>
+            마지막 {fmtTime(run.at)} — <span className={run.result === 'error' ? 'error' : undefined}>{mirrorResultText(run)}</span>
+          </>
+        ) : (
+          '아직 가져오지 않음 (서버 시작 1분 뒤 · 10분마다)'
+        )}
+      </span>
+      <Tooltip label="GitHub 최신 릴리스를 지금 확인합니다 — 새 버전이면 가져와 게시">
+        <Button size="sm" icon={RefreshCw} disabled={running} onClick={onSync}>
+          지금 가져오기
+        </Button>
+      </Tooltip>
+    </div>
+  );
+}
+
 function AdminReleases() {
   const [rows, setRows] = useState<AdminAppReleaseDto[] | null>(null);
+  const [mirror, setMirror] = useState<AppMirrorStatusDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
-      setRows((await api<{ releases: AdminAppReleaseDto[] }>('GET', '/api/admin/app-releases')).releases);
+      const r = await api<AdminAppReleasesDto>('GET', '/api/admin/app-releases');
+      setRows(r.releases);
+      setMirror(r.mirror);
     } catch (e) {
       setError(errorText(e));
     }
@@ -121,6 +167,25 @@ function AdminReleases() {
   useEffect(() => {
     void load();
   }, [load]);
+  // A scheduled import is running on the server → look again shortly.
+  useEffect(() => {
+    if (!mirror?.running || busy) return;
+    const t = setTimeout(() => void load(), 3000);
+    return () => clearTimeout(t);
+  }, [mirror, busy, load]);
+
+  const syncMirror = async () => {
+    setBusy('mirror');
+    setError(null);
+    try {
+      setMirror(await api<AppMirrorStatusDto>('POST', '/api/admin/app-releases/mirror'));
+      await load();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const act = async (r: AdminAppReleaseDto, what: 'publish' | 'delete') => {
     const q =
@@ -145,8 +210,12 @@ function AdminReleases() {
     <Card data-testid="admin-releases">
       <h2>릴리스 관리 (관리자)</h2>
       <p className="muted">
-        올리기는 앱 레포에서 <code>pnpm release:upload</code> (관리자 계정의 읽기·쓰기 토큰)로 합니다. 초안을 확인한 뒤 여기서 게시하거나 지웁니다.
+        {mirror
+          ? '새 버전은 GitHub 릴리스에서 자동으로 가져와 게시합니다(시작 1분 뒤 · 주기마다). 직접 올리기(초안)는 앱 레포의 '
+          : '올리기는 앱 레포에서 '}
+        <code>pnpm release:upload</code> (관리자 계정의 읽기·쓰기 토큰)로 합니다. 초안을 확인한 뒤 여기서 게시하거나 지웁니다.
       </p>
+      {mirror && <MirrorStatus mirror={mirror} busy={busy === 'mirror'} onSync={() => void syncMirror()} />}
       {error && (
         <p className="error" role="alert">
           {error}

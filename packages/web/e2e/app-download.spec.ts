@@ -2,6 +2,7 @@
 // token through the real upload API → the download screen shows the visitor's OS first (Mac: both chips +
 // hint, Windows, Linux), other platforms, release notes, the kept versions and first-install help; the
 // admin publishes a draft there and the oldest version drops out (keep 3); a member sees no admin part.
+// Last, the GitHub release mirror (ADR-048): 지금 가져오기 against the fake GitHub in e2e/server.mjs.
 // Screenshots go to e2e-results/download-*.png for the UI review.
 import { expect, request as playwrightRequest, test, type APIRequestContext, type Browser, type Page } from '@playwright/test';
 import { E2E } from './env.mjs';
@@ -182,6 +183,44 @@ test.describe('앱 내려받기', () => {
     const yml = await page.request.get('/updates/alpha/latest-mac.yml');
     expect(yml.headers()['cache-control']).toBe('no-store');
     expect(await yml.text()).toContain('0.1.0-alpha.4');
+    await page.context().close();
+  });
+
+  // Last: adds a beta release (other channel — the alpha listings above stay as they are).
+  test('admin imports the latest GitHub release with 지금 가져오기 (fake GitHub)', async ({ browser }) => {
+    const page = await visitor(browser, 'mac', E2E.admin2Email);
+    await page.goto('/download');
+    const admin = page.getByTestId('admin-releases');
+    const mirror = admin.getByTestId('mirror-status');
+    await expect(mirror).toContainText(`GitHub 에서 가져오기: ${E2E.mirrorRepo}`);
+    const syncNow = mirror.getByRole('button', { name: '지금 가져오기' });
+
+    // Nothing published on GitHub yet.
+    await syncNow.click();
+    await expect(mirror).toContainText('GitHub 에 게시된 릴리스 없음');
+    await expect(mirror).toContainText('마지막 ');
+    await expect(syncNow).toBeEnabled();
+
+    // The release appears on GitHub → imported and published. (The server's own first run, 1 minute after
+    // start, may get there between arming and the click — then the click reports it as already there.)
+    const v = E2E.mirrorVersion;
+    expect((await page.request.post(`${E2E.githubUrl}/__e2e/arm`)).status()).toBe(204);
+    await syncNow.click();
+    await expect(mirror).toContainText(new RegExp(`${v.replaceAll('.', '\\.')} 가져와 게시함|GitHub 최신 ${v.replaceAll('.', '\\.')}`));
+    const row = admin.getByTestId('admin-release-row').filter({ hasText: v });
+    await expect(row).toContainText('베타');
+    await expect(row).toContainText('게시');
+    await expect(row).toContainText('10개');
+    await mirror.scrollIntoViewIfNeeded();
+    await page.mouse.move(0, 0);
+    await page.screenshot({ path: 'e2e-results/download-5-mirror.png', fullPage: true });
+
+    // Served from the update feed of its channel.
+    const yml = await page.request.get('/updates/beta/latest-linux.yml');
+    expect(yml.status()).toBe(200);
+    expect(await yml.text()).toContain(`version: ${v}`);
+    const releases = await (await page.request.get('/api/app/releases?channel=beta')).json();
+    expect(releases.releases[0]).toMatchObject({ version: v, notes: '- GitHub 에서 가져온 베타' });
     await page.context().close();
   });
 });

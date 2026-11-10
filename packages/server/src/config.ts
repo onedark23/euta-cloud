@@ -54,6 +54,17 @@ export interface Config {
   updatesDir: string;
   /** Oldest app version allowed on device-token requests (426 APP_TOO_OLD below it). null → no check. */
   minAppVersion: string | null;
+  /** GitHub release mirror (ADR-048 decision 2). null → off (APP_MIRROR_GITHUB unset/empty). */
+  appMirror: AppMirrorConfig | null;
+}
+
+export interface AppMirrorConfig {
+  /** `<owner>/<repo>` whose latest release is imported. */
+  repo: string;
+  /** Time between sync runs (the first run is 1 minute after start). */
+  intervalMs: number;
+  /** `https://github.com` — overridable for tests only (fake GitHub). */
+  baseUrl: string;
 }
 
 export interface MicrosoftConfig {
@@ -109,6 +120,33 @@ export function parseMinAppVersion(v: string | undefined): string | null {
   return valid;
 }
 
+const DURATION_UNITS: Record<string, number> = { ms: 1, s: 1000, m: 60_000, h: 3_600_000 };
+
+/** "10m" · "30s" · "1h" · "500ms" → milliseconds. */
+export function parseDuration(v: string, what: string): number {
+  const m = /^\s*(\d+)\s*(ms|s|m|h)\s*$/.exec(v);
+  if (!m) throw new Error(`${what} must be a duration such as 10m, 30s or 1h: ${v}`);
+  return Number(m[1]) * DURATION_UNITS[m[2]!]!;
+}
+
+const GITHUB_REPO = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}$/;
+/** Shortest allowed APP_MIRROR_INTERVAL — GitHub is polled anonymously. */
+export const MIN_MIRROR_INTERVAL_MS = 60_000;
+
+/** APP_MIRROR_GITHUB (`<owner>/<repo>`, empty → off) · APP_MIRROR_INTERVAL (default 10m) · APP_MIRROR_BASE_URL (tests). */
+export function parseAppMirror(env: NodeJS.ProcessEnv): AppMirrorConfig | null {
+  const repo = env.APP_MIRROR_GITHUB?.trim();
+  if (!repo) return null;
+  if (!GITHUB_REPO.test(repo) || repo.endsWith('/.') || repo.endsWith('/..')) {
+    throw new Error(`APP_MIRROR_GITHUB must be <owner>/<repo> (e.g. onedark23/euta-app): ${repo}`);
+  }
+  const intervalMs = parseDuration(env.APP_MIRROR_INTERVAL?.trim() || '10m', 'APP_MIRROR_INTERVAL');
+  if (intervalMs < MIN_MIRROR_INTERVAL_MS) throw new Error('APP_MIRROR_INTERVAL must be at least 1m');
+  const baseUrl = (env.APP_MIRROR_BASE_URL?.trim() || 'https://github.com').replace(/\/+$/, '');
+  if (!/^https?:\/\//.test(baseUrl)) throw new Error(`APP_MIRROR_BASE_URL must be an http(s) URL: ${baseUrl}`);
+  return { repo, intervalMs, baseUrl };
+}
+
 const DEFAULT_WEB_DIST = fileURLToPath(new URL('../../web/dist', import.meta.url));
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -151,5 +189,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     runnerHeartbeatMs: Number(env.RUNNER_HEARTBEAT_MS ?? 5_000),
     updatesDir: resolve(env.UPDATES_DIR ?? 'data/updates'),
     minAppVersion: parseMinAppVersion(env.MIN_APP_VERSION),
+    appMirror: parseAppMirror(env),
   };
 }

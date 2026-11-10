@@ -32,6 +32,10 @@ data:
   # Oldest app version allowed for cloud features (426 APP_TOO_OLD below it). Empty = no check. Raise it
   # in the same deployment that changes the API in a way older apps cannot handle.
   MIN_APP_VERSION: ""
+  # GitHub release mirror (ADR-048): import the repo's latest GitHub release into this server's update feed
+  # 1 minute after start and every APP_MIRROR_INTERVAL (default 10m). Unset or empty = off.
+  # APP_MIRROR_GITHUB: onedark23/euta-app
+  # APP_MIRROR_INTERVAL: 10m
   LOG_LEVEL: info
   # Never set ALLOW_PRIVATE_TARGETS in a deployment (dev/test only).
 ---

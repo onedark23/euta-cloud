@@ -34,6 +34,7 @@ import { mcpRoutes } from './mcp/endpoint.js';
 import { runRoutes } from './routes/runs.js';
 import { scheduleRoutes } from './routes/schedules.js';
 import { appReleaseAdminRoutes, appReleasePublicRoutes } from './routes/app-releases.js';
+import { AppMirror } from './services/app-mirror.js';
 import { hasPublishedRelease } from './services/app-releases.js';
 import { rejectOldApp } from './services/app-version.js';
 import type { FetchLike } from './services/notify.js';
@@ -92,10 +93,13 @@ export async function buildApp(
     approvalMode: mailer === null,
     log: app.log,
     fetch: deps.fetch ?? ((url, init) => fetch(url, init)),
+    mirror: null,
   };
+  if (config.appMirror) ctx.mirror = new AppMirror(ctx, config.appMirror);
 
   await feed.start();
   app.addHook('onClose', async () => {
+    ctx.mirror?.stop();
     await feed.stop();
     await pool.end();
   });

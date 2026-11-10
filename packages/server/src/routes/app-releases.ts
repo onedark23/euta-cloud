@@ -3,9 +3,10 @@
 //   GET /updates/:channel/:file · GET /updates/:channel/:version/:file · GET /api/app/releases · GET /api/app/compat
 // Admin (admin session or admin read_write personal token):
 //   GET/POST /api/admin/app-releases · PUT …/:version/files/:name · POST …/:version/publish · DELETE …/:version
+//   POST /api/admin/app-releases/mirror (GitHub release mirror sync now, ADR-048)
 import type { Readable } from 'node:stream';
 import send from '@fastify/send';
-import type { AdminAppReleaseDto, AppCompatDto, AppReleasesDto } from '@euta-cloud/shared';
+import type { AdminAppReleaseDto, AdminAppReleasesDto, AppCompatDto, AppMirrorStatusDto, AppReleasesDto } from '@euta-cloud/shared';
 import { desc } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { AppContext } from '../context.js';
@@ -124,7 +125,7 @@ export async function appReleaseAdminRoutes(app: FastifyInstance, ctx: AppContex
   const base = '/api/admin/app-releases';
   type VP = { Params: { version: string } };
 
-  app.get(base, async (req): Promise<{ releases: AdminAppReleaseDto[] }> => {
+  app.get(base, async (req): Promise<AdminAppReleasesDto> => {
     requireReleaseAdmin(req);
     const rows = await ctx.db.select().from(appReleases).orderBy(desc(appReleases.createdAt));
     const files = await filesOf(ctx, rows.map((r) => r.id));
@@ -141,7 +142,15 @@ export async function appReleaseAdminRoutes(app: FastifyInstance, ctx: AppContex
           return c ? [{ name: f.name, size: f.size, sha512: f.sha512, ...c }] : [];
         }),
       })),
+      mirror: ctx.mirror?.status() ?? null,
     };
+  });
+
+  // GitHub release mirror: sync now (waits for a run already in progress) and return the status.
+  app.post(`${base}/mirror`, async (req): Promise<AppMirrorStatusDto> => {
+    requireReleaseAdmin(req);
+    if (!ctx.mirror) throw new AppError(409, 'MIRROR_OFF', 'the GitHub release mirror is off (APP_MIRROR_GITHUB is not set)');
+    return ctx.mirror.run();
   });
 
   app.post(base, async (req, reply) => {

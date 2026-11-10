@@ -1,4 +1,4 @@
-// Server entry: config → migrations → app → listen; hourly purge job.
+// Server entry: config → migrations → app → listen; hourly purge job and the other background loops.
 import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
 import { runMigrations } from './db/index.js';
@@ -66,7 +66,14 @@ const offNotify = ctx.feed.onSignal('euta_notify', sendNotifications);
 const notifier = setInterval(sendNotifications, 15_000);
 notifier.unref();
 
+// GitHub release mirror (ADR-048): 1 minute after start, then every APP_MIRROR_INTERVAL.
+if (ctx.mirror) {
+  ctx.mirror.start();
+  app.log.info({ repo: ctx.mirror.config.repo, intervalMs: ctx.mirror.config.intervalMs }, 'app release mirror on');
+}
+
 const shutdown = async () => {
+  ctx.mirror?.stop();
   clearInterval(timer);
   clearInterval(sweeper);
   clearInterval(scheduler);

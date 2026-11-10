@@ -42,3 +42,23 @@ export interface AdminAppReleaseDto {
   publishedAt: string | null;
   files: { name: string; size: number; sha512: string; platform: AppPlatform; arch: AppArch | null; kind: AppReleaseFileKind }[];
 }
+
+/** GitHub release mirror run outcome (ADR-048 decision 2). */
+export type AppMirrorResult = 'published' | 'already' | 'none' | 'error';
+
+/** Mirror status (`APP_MIRROR_GITHUB` set) — in GET /api/admin/app-releases `mirror` and POST …/mirror. */
+export interface AppMirrorStatusDto {
+  /** `<owner>/<repo>` on GitHub. */
+  repo: string;
+  /** A sync run is in progress. */
+  running: boolean;
+  /** null → no run yet since the server started. */
+  lastRun: { at: string; result: AppMirrorResult; version?: string; message?: string } | null;
+}
+
+/** GET /api/admin/app-releases */
+export interface AdminAppReleasesDto {
+  releases: AdminAppReleaseDto[];
+  /** null → mirroring is off. */
+  mirror: AppMirrorStatusDto | null;
+}

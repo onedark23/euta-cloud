@@ -195,4 +195,5 @@ kubectl -n euta exec deploy/euta-server -- du -sh /data/updates /data/results
 ```
 
 - 용량: 한 버전 ≈ 1.5GB × 3 = 약 4.5GB 가 결과 파일 상한(`RESULT_MAX_TOTAL`)과 **따로** PVC 를 쓴다.
+- GitHub 에서 자동으로 가져오기(선택, ADR-048): `config.yaml` 에 `APP_MIRROR_GITHUB: onedark23/euta-app` 을 두면 서버가 시작 1분 뒤 · `APP_MIRROR_INTERVAL`(기본 `10m`)마다 그 레포의 GitHub 최신 릴리스(`releases/latest` 넘겨 주기 — GitHub API 아님)를 보고, 서버에 없는 버전이면 `latest*.yml` · 파일 · `.blockmap` 을 받아(sha512 확인) 게시한다. 토큰이 필요 없고 업로드 Ingress 도 쓰지 않는다 — pod 가 `github.com` 과 파일이 넘겨지는 `release-assets.githubusercontent.com`(2026-11-10 확인) 으로 나갈 수 있어야 한다. 웹 **앱 내려받기 › 릴리스 관리** 에 마지막 가져오기와 [지금 가져오기](`POST /api/admin/app-releases/mirror`)가 보인다. 실패하면 초안을 지우고 다음 주기에 다시 한다. GitHub 에 없는 버전(사내 먼저 배포)은 위의 `release:upload` 로 올린다.
 - 최소 앱 버전: 서버 API 가 옛 앱과 맞지 않게 바뀌는 배포는 **같은 배포에서** `config.yaml` 의 `MIN_APP_VERSION` 을 올린다(빈 값 = 검사 안 함). 그보다 낮은 앱은 클라우드 기능이 "업데이트 필요" 로 잠긴다.

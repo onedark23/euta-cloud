@@ -7,4 +7,8 @@ export declare const E2E: {
   fixturePort: number;
   fixtureUrl: string;
   runnerLocation: string;
+  githubPort: number;
+  githubUrl: string;
+  mirrorRepo: string;
+  mirrorVersion: string;
 };
